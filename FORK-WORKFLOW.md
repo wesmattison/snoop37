@@ -68,6 +68,49 @@ review SMK compatibility. A direct merge or cherry-pick can conflict with the po
 
 ## Build and validation
 
+### Configured Windows environment
+
+Ubuntu-24.04 is installed in WSL2. The initial build environment uses the Linux
+`root` account, with JieLi toolchain `jieli-linux-toolchains-20260730.1` linked at
+`/root/.jieli/toolchain` and SDK tag `AC79NN_SDK_V1.2.1_2023-12-13` checked out at
+`/root/fw-AC79_AIoT_SDK` (commit `d179b4484759423312073f5fbb232501aa491047`).
+Ubuntu packages include build-essential, git, curl, xz-utils, ca-certificates,
+python3, python3-pil, and nodejs. Node 24.22.0 from nodejs.org (archive SHA-256
+checked against its published checksum) is installed under `/opt/snoop37-node/`
+and linked as `/usr/local/bin/node`, ahead of Ubuntu's Node 18. Node 18 lacks
+`CompressionStream('deflate-raw')`, which the web tests require. Python is 3.12.3;
+the JieLi compiler reports clang 4.0.1. No hardware access is needed to build.
+
+From PowerShell in this checkout:
+
+```powershell
+.\build-snoop37-wsl.ps1
+```
+
+This explicitly selects the SMK-37 Pro target and the Snoop37 appearance, and
+returns an error if compilation fails. It builds the existing Windows checkout
+through WSL; there is no second source copy to synchronize. It does not flash.
+The upstream builder can retry automatically with `FELUCCA_LOGO_TEXT=1` if the
+graphical logo would exceed flash capacity; this occurred on the initial build.
+
+Initial validation on 2026-10-19: the Pro and FM-1 reference builds succeeded,
+the Pro package identity/layout/CRC test passed, and all 182 golden audio renders
+matched, including all tested second-core modes. The full host suite was not
+green: ThreadSanitizer could not start (`unexpected memory mapping`), and static
+instruction budgets were exceeded for `drums_mix` (6793 vs. 6153 baseline, over
+the 10% allowance) and `fm1_alnk0_irq` (268 vs. 174). The first web run used Node
+18 and failed on deflate-raw; the full `node web/test_web.mjs` rerun passed under
+Node 24. Playwright/PWA checks were skipped because Playwright was not installed;
+WASM preview was not built. Checks requiring external official stock packages
+were skipped (`SMK_STOCK_DIR` was not set).
+The PowerShell launcher was tested with a second Pro build, byte-identical to
+the first: package 651206 bytes, SHA-256
+`4a3343a884a041ba8940c0bf0856315f1b847636fb68a7b567d173bac438e172`.
+Logs are local ignored files: `build/smk37-build.log`, `build/fm1-build.log`,
+`build/host-tests.log`, and `build/web-tests-node24.log`. No firmware was flashed.
+
+### Upstream build commands
+
 Follow `BUILDING.md` and `SMK37.md` for toolchain and SDK prerequisites. On Windows,
 the hardware build needs Linux x86-64 through WSL2 (or another supported Linux
 environment). In that environment, the Pro target with the Snoop37 appearance is:
